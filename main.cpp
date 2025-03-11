@@ -2,20 +2,23 @@
 #include <vector>
 #include <raylib.h>
 
-#define WIDTH 800
-#define HEIGHT 450
+#define WIDTH 1280
+#define HEIGHT 720
 #define FPS 30
 
-#define SNAKE_SIZE 10
-#define SNAKE_SPEED 10
+#define SNAKE_SIZE 40
+#define SNAKE_SPEED 40
 
-#define FOOD_SIZE 10
+#define FOOD_SIZE 40
+
+#define BORDER_WIDTH 20
+#define BORDER_COLOR DARKGREEN
 
 using namespace std;
 
 class Snake {
 public:
-    Snake(pair<int, int> init_pos, int init_length = 2) {
+    Snake(pair<int, int> init_pos = {440, 225}, int init_length = 2) {
         x = init_pos.first;
         y = init_pos.second;
         length = init_length;
@@ -42,6 +45,25 @@ public:
         tail_right = LoadTexture("assets/tail_right.png");
     }
 
+    ~Snake() {
+        UnloadTexture(head_up);
+        UnloadTexture(head_down);
+        UnloadTexture(head_left);
+        UnloadTexture(head_right);
+
+        UnloadTexture(body_vertical);
+        UnloadTexture(body_horizontal);
+        UnloadTexture(body_bottom_left);
+        UnloadTexture(body_bottom_right);
+        UnloadTexture(body_top_left);
+        UnloadTexture(body_top_right);
+
+        UnloadTexture(tail_up);
+        UnloadTexture(tail_down);
+        UnloadTexture(tail_left);
+        UnloadTexture(tail_right);
+    }
+
     int move() {
         for (int i = length - 1; i > 0; i--) {
             body[i] = body[i - 1];
@@ -64,16 +86,6 @@ public:
             case RIGHT: x += SNAKE_SPEED; break;
         }
         body[0] = {x, y};
-
-        if (x <= 0) {
-            x = WIDTH - SNAKE_SIZE;
-        } else if (x >= WIDTH) {
-            x = 0;
-        } else if (y <= 0) {
-            y = HEIGHT - SNAKE_SIZE;
-        } else if (y >= HEIGHT) {
-            y = 0;
-        }
 
         return check_collision(); 
     }
@@ -142,8 +154,16 @@ public:
     pair<int, int> get_position() {
         return {x, y};
     }
+    
 private:
     int check_collision() {
+        // Check border collision
+        if (x <= 30 || x + SNAKE_SIZE >= WIDTH - 30 || 
+            y <= 30 || y + SNAKE_SIZE >= HEIGHT - 30) {
+            return 0;
+        }
+        
+        // Check self collision
         for (int i = 1; i < length; i++) {
             if (x == body[i].first && y == body[i].second) {
                 return 0;
@@ -174,6 +194,10 @@ public:
         food_texture = LoadTexture("assets/apple.png");
     }
 
+    ~Food() {
+        UnloadTexture(food_texture);
+    }
+
     void draw() {
         DrawTexture(food_texture, x, y, RED);
     }
@@ -194,32 +218,81 @@ private:
 class Game {
 public:
     Game() {
-        snake = new Snake({400, 225}, 2);
-        food = new Food(rand() % (WIDTH - FOOD_SIZE - 20) + 10, rand() % (HEIGHT - FOOD_SIZE - 20) + 10);
+        snake = new Snake();
+        food = new Food(BORDER_WIDTH + rand() % (WIDTH - 2 * BORDER_WIDTH - FOOD_SIZE - 50), 
+                         BORDER_WIDTH + rand() % (HEIGHT - 2 * BORDER_WIDTH - FOOD_SIZE - 50));
         score = 0;
+        background = LoadTexture("assets/bg.jpg");
+        gameFont = LoadFontEx("assets/font.ttf", 32, 0, 250);
+        currentState = START_SCREEN;
+
+        // Create a render texture for the border
+        RenderTexture2D borderRender = LoadRenderTexture(WIDTH, HEIGHT);
+        BeginTextureMode(borderRender);
+        ClearBackground(BLANK);
+        
+        // Draw border on the texture
+        DrawRectangleLinesEx(
+            (Rectangle){ 
+                10, 
+                10, 
+                1260, 
+                700 
+            }, 
+            BORDER_WIDTH, 
+            BORDER_COLOR
+        );
+        
+        EndTextureMode();
+        borderTexture = borderRender.texture;
     }
 
     ~Game() {
         delete snake;
         delete food;
+        UnloadTexture(background);
+        UnloadTexture(borderTexture);
+        UnloadFont(gameFont);
     }
 
     void play() {
-        bool game_over = false;
-
         while (!WindowShouldClose()) {
             BeginDrawing();
-            ClearBackground(RAYWHITE);
-            if (!game_over) game_over = !snake->move();
-            snake->draw();
-            food->draw();
-            display_score();
-            snake_eat_food();
-            if (game_over) {
-                display_game_over();
+            int game_over = 0;
+            switch (currentState) {
+                case START_SCREEN:
+                    draw_start_screen();
+                    handle_start_screen_input();
+                    break;
+                case PLAYING:
+                    game_over = snake->move();
+                    if (game_over == 0) {
+                        currentState = GAME_OVER;
+                    }
+                    ClearBackground(RAYWHITE);
+                    DrawTexture(background, 0, 0, WHITE);
+                    DrawTexture(borderTexture, 0, 0, WHITE);
+                    snake->draw();
+                    food->draw();
+                    display_score();
+                    snake_eat_food();
+                    break;
+                case GAME_OVER:
+                    // First draw the game scene (same as in PLAYING state)
+                    ClearBackground(RAYWHITE);
+                    DrawTexture(background, 0, 0, WHITE);
+                    DrawTexture(borderTexture, 0, 0, WHITE);
+                    snake->draw();
+                    food->draw();
+                    display_score();
+                    
+                    // Then overlay the game over screen
+                    draw_game_over();
+                    handle_game_over_input();
+                    break;
             }
+            WaitTime(0.1);
             EndDrawing();
-            WaitTime(0.01);
         }
     }
 
@@ -245,27 +318,90 @@ private:
 
         if (CheckCollisionRecs(snakeHead, foodRect)) {
             snake->grow();
-            food->set_position(rand() % (WIDTH - FOOD_SIZE - 20) + 10, rand() % (HEIGHT - FOOD_SIZE - 20) + 10);
+            food->set_position(
+                BORDER_WIDTH + rand() % (WIDTH - 2 * BORDER_WIDTH - FOOD_SIZE - 50), 
+                BORDER_WIDTH + rand() % (HEIGHT - 2 * BORDER_WIDTH - FOOD_SIZE - 50)
+            );
             score += 10;
         }
+    }
+
+    void draw_start_screen() {
+        ClearBackground(RAYWHITE);
+        
+        // Draw background with scaling
+        Rectangle sourceRec = { 0, 0, (float)background.width, (float)background.height };
+        Rectangle destRec = { 0, 0, (float)WIDTH, (float)HEIGHT };
+        Vector2 origin = { 0, 0 };
+        DrawTexturePro(background, sourceRec, destRec, origin, 0.0f, WHITE);
+        
+        // Draw border
+        DrawTexture(borderTexture, 0, 0, WHITE);
+        
+        // Draw title
+        DrawTextEx(gameFont, "SNAKE GAME", (Vector2){ WIDTH/2 - 170, 100 }, 60, 2, DARKGREEN);
+        
+        // Draw menu options
+        DrawTextEx(gameFont, "PRESS ENTER TO START", (Vector2){ WIDTH/2 - 180, HEIGHT/2 }, 32, 2, BLACK);
+        
+        // Draw instructions
+        DrawTextEx(gameFont, "Use arrow keys to control the snake", (Vector2){ WIDTH/2 - 230, HEIGHT/2 + 130 }, 24, 2, DARKGRAY);
+    }
+
+    void handle_start_screen_input() {
+        if (IsKeyPressed(KEY_ENTER)) {
+            // Reset game state for a new game
+            delete snake;
+            snake = new Snake();
+            
+            food->set_position(BORDER_WIDTH + rand() % (WIDTH - 2 * BORDER_WIDTH - FOOD_SIZE - 50),
+                              BORDER_WIDTH + rand() % (HEIGHT - 2 * BORDER_WIDTH - FOOD_SIZE - 50));
+            score = 0;
+            
+            // Change state to PLAYING
+            currentState = PLAYING;
+        }
+    }
+
+    void handle_game_over_input() {
+        if (IsKeyPressed(KEY_R)) {
+            // Restart the game
+            delete snake;
+            snake = new Snake();
+            
+            food->set_position(BORDER_WIDTH + rand() % (WIDTH - 2 * BORDER_WIDTH - FOOD_SIZE - 50),
+                              BORDER_WIDTH + rand() % (HEIGHT - 2 * BORDER_WIDTH - FOOD_SIZE - 50));
+            score = 0;
+            
+            currentState = PLAYING;
+        }
+    }
+
+    void draw_game_over() {
+        // Semi-transparent overlay
+        DrawRectangle(0, 0, WIDTH, HEIGHT, ColorAlpha(BLACK, 0.5f));
+        
+        // Game over text
+        DrawTextEx(gameFont, "GAME OVER", (Vector2){ WIDTH/2 - 110, HEIGHT/2 - 40 }, 40, 2, RED);
+        DrawTextEx(gameFont, TextFormat("SCORE: %i", score), (Vector2){ WIDTH/2 - 80, HEIGHT/2 + 10 }, 32, 2, WHITE);
+        DrawTextEx(gameFont, "PRESS R TO RESTART", (Vector2){ WIDTH/2 - 130, HEIGHT/2 + 60 }, 24, 2, WHITE);
     }
 
     void display_score() {
         DrawText(TextFormat("Score: %i", score), 10, 10, 20, BLACK);
     }
-
-    void display_game_over() {
-        DrawText("Game Over!", WIDTH / 2 - 50, HEIGHT / 2 - 10, 20, RED);
-        DrawText(TextFormat("Your score: %i", score), WIDTH / 2 - 50, HEIGHT / 2 + 10, 20, RED);
-    }
-
 private:
     Snake *snake;
     Food *food;
     int score;
+    Texture2D background;
+    Texture2D borderTexture;
+    enum GameState {START_SCREEN=0, PLAYING, GAME_OVER} currentState;
+    Texture2D titleTexture;
+    Font gameFont;
 };
 
-int main () {
+int main() {
     InitWindow(WIDTH, HEIGHT, "Snake Game");
     SetTargetFPS(FPS);
 
