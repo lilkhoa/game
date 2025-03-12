@@ -7,7 +7,7 @@ using namespace std;
 
 class Snake {
 public:
-    Snake(pair<int, int> init_pos = {440, 225}, int init_length = 2);
+    Snake(pair<int, int> init_pos = {75, 75}, int init_length = 2);
     ~Snake();
 
     int move();
