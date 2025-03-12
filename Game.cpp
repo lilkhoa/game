@@ -3,8 +3,7 @@
 // Constructor
 Game::Game() {
     snake = new Snake();
-    food = new Food(BORDER_WIDTH + rand() % (WIDTH - 2 * BORDER_WIDTH - FOOD_SIZE - 50), 
-                        BORDER_WIDTH + rand() % (HEIGHT - 2 * BORDER_WIDTH - FOOD_SIZE - 50));
+    food = new Food(rand() % 1161 + 40, rand() % 601 + 40);
     score = 0;
     background = LoadTexture("assets/bg.jpg");
     gameFont = LoadFontEx("assets/font.ttf", 32, 0, 250);
@@ -106,10 +105,7 @@ void Game::snake_eat_food() {
 
     if (CheckCollisionRecs(snakeHead, foodRect)) {
         snake->grow();
-        food->set_position(
-            BORDER_WIDTH + rand() % (WIDTH - 2 * BORDER_WIDTH - FOOD_SIZE - 50), 
-            BORDER_WIDTH + rand() % (HEIGHT - 2 * BORDER_WIDTH - FOOD_SIZE - 50)
-        );
+        food->set_position(rand() % 1161 + 40, rand() % 601 + 40);
         score += 10;
     }
 }
@@ -131,7 +127,7 @@ void Game::draw_start_screen() {
     DrawTextEx(gameFont, "SNAKE GAME", (Vector2){ WIDTH/2 - 170, 100 }, 60, 2, DARKGREEN);
     
     // Draw menu options
-    DrawTextEx(gameFont, "PRESS ENTER TO START", (Vector2){ WIDTH/2 - 180, HEIGHT/2 }, 32, 2, BLACK);
+    DrawTextEx(gameFont, "PRESS SPACE TO START", (Vector2){ WIDTH/2 - 180, HEIGHT/2 }, 32, 2, BLACK);
     
     // Draw instructions
     DrawTextEx(gameFont, "Use arrow keys to control the snake", (Vector2){ WIDTH/2 - 230, HEIGHT/2 + 130 }, 24, 2, DARKGRAY);
@@ -139,7 +135,7 @@ void Game::draw_start_screen() {
 
 // Start screen input method
 void Game::handle_start_screen_input() {
-    if (IsKeyPressed(KEY_ENTER)) {
+    if (IsKeyPressed(KEY_SPACE)) {
         currentState = PLAYING;
     }
 }
@@ -149,19 +145,16 @@ void Game::draw_game_over() {
     DrawRectangle(0, 0, WIDTH, HEIGHT, ColorAlpha(BLACK, 0.5f));    
     DrawTextEx(gameFont, "GAME OVER", (Vector2){ WIDTH/2 - 110, HEIGHT/2 - 40 }, 40, 2, RED);
     DrawTextEx(gameFont, TextFormat("SCORE: %i", score), (Vector2){ WIDTH/2 - 80, HEIGHT/2 + 10 }, 32, 2, WHITE);
-    DrawTextEx(gameFont, "PRESS R TO RESTART", (Vector2){ WIDTH/2 - 130, HEIGHT/2 + 60 }, 24, 2, WHITE);
+    DrawTextEx(gameFont, "PRESS SPACE TO RESTART", (Vector2){ WIDTH/2 - 140, HEIGHT/2 + 60 }, 24, 2, WHITE);
 }
 
 // Game over input method
 void Game::handle_game_over_input() {
-    if (IsKeyPressed(KEY_R)) {
+    if (IsKeyPressed(KEY_SPACE)) {
         delete snake;
         delete food;
         snake = new Snake();
-        food = new Food(
-            BORDER_WIDTH + rand() % (WIDTH - 2 * BORDER_WIDTH - FOOD_SIZE - 50), 
-            BORDER_WIDTH + rand() % (HEIGHT - 2 * BORDER_WIDTH - FOOD_SIZE - 50)
-        );
+        food = new Food(rand() % 1161 + 40, rand() % 601 + 40);
         score = 0;
         currentState = PLAYING;
     }

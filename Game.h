@@ -1,7 +1,7 @@
 #ifndef GAME_H
 #define GAME_H
 
-#include "init.h"
+#include "env.h"
 #include "Snake.h"
 #include "Food.h"
 

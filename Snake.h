@@ -1,7 +1,7 @@
 #ifndef SNAKE_H
 #define SNAKE_H
 
-#include "init.h"
+#include "env.h"
 
 using namespace std;
 

@@ -1,7 +1,7 @@
 #ifndef FOOD_H
 #define FOOD_H
 
-#include "init.h"
+#include "env.h"
 
 using namespace std;
 
